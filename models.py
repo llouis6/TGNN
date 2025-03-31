@@ -96,60 +96,69 @@ class TemporalGNN(nn.Module):
                     
         return torch.stack(edge_scores)
 
-class OnlineAnomalyDetector:
+class OnlineAnomalyDetector(torch.nn.Module):
+    """Online anomaly detector using node embeddings.
+    
+    This detector maintains node embeddings and updates them based on new graph snapshots.
+    Anomaly scores are computed based on the similarity between node embeddings.
+    """
     def __init__(self, in_channels: int, hidden_channels: int, out_channels: int):
-        """Online anomaly detector using node embeddings.
-        
-        Args:
-            in_channels: Number of input features
-            hidden_channels: Number of hidden features
-            out_channels: Number of output features
-        """
+        super().__init__()
         self.encoder = GCNEncoder(in_channels, hidden_channels, out_channels)
-        self.node_embeddings: Dict[int, torch.Tensor] = {}
-        self.alpha = 0.5  # blending factor for embedding updates
+        self.node_embeddings = {}  # Dictionary to store node embeddings
+        self.embedding_dim = out_channels
         
-    def update_embeddings(self, x: torch.Tensor, edge_index: torch.Tensor, 
-                         node_indices: List[int]) -> None:
-        """Update node embeddings for a new snapshot.
+    def update_embeddings(self, x: torch.Tensor, edge_index: torch.Tensor, nodes: List[int]):
+        """Update node embeddings based on new graph snapshot.
         
         Args:
-            x: Node feature matrix
-            edge_index: Graph connectivity
-            node_indices: List of node indices in this snapshot
+            x: Node features
+            edge_index: Edge indices
+            nodes: List of node IDs
         """
-        # Get new embeddings
-        new_embeddings = self.encoder(x, edge_index)
+        # Get embeddings for current snapshot
+        embeddings = self.encoder(x, edge_index)
         
         # Update embeddings for each node
-        for i, node_idx in enumerate(node_indices):
-            if node_idx not in self.node_embeddings:
-                # New node - initialize with its embedding
-                self.node_embeddings[node_idx] = new_embeddings[i]
-            else:
-                # Existing node - blend with new embedding
-                self.node_embeddings[node_idx] = (
-                    (1 - self.alpha) * self.node_embeddings[node_idx] +
-                    self.alpha * new_embeddings[i]
-                )
-                
-    def compute_edge_score(self, u: int, v: int) -> float:
-        """Compute anomaly score for an edge between nodes u and v.
+        for i, node_id in enumerate(nodes):
+            self.node_embeddings[node_id] = embeddings[i].detach()
+            
+    def compute_edge_score(self, src: int, dst: int) -> float:
+        """Compute anomaly score for an edge based on node embeddings.
         
         Args:
-            u: Source node index
-            v: Target node index
+            src: Source node ID
+            dst: Destination node ID
             
         Returns:
-            Anomaly score (higher means more anomalous)
+            Anomaly score (higher means more likely to be anomalous)
         """
-        if u not in self.node_embeddings or v not in self.node_embeddings:
-            return 1.0  # New edge involving new node is considered anomalous
+        if src not in self.node_embeddings or dst not in self.node_embeddings:
+            return 0.0
             
-        # Compute cosine similarity between embeddings
-        h_u = self.node_embeddings[u]
-        h_v = self.node_embeddings[v]
-        sim = F.cosine_similarity(h_u.unsqueeze(0), h_v.unsqueeze(0))
+        # Compute cosine similarity between node embeddings
+        src_emb = self.node_embeddings[src]
+        dst_emb = self.node_embeddings[dst]
+        
+        # Normalize embeddings
+        src_emb = src_emb / (torch.norm(src_emb) + 1e-8)
+        dst_emb = dst_emb / (torch.norm(dst_emb) + 1e-8)
+        
+        # Compute similarity (higher similarity = lower anomaly score)
+        similarity = torch.sum(src_emb * dst_emb)
         
         # Convert to anomaly score (1 - similarity)
-        return 1 - sim.item() 
+        return (1 - similarity).item()
+    
+    def state_dict(self):
+        """Get the state dictionary of the model."""
+        return {
+            'encoder': self.encoder.state_dict(),
+            'node_embeddings': {k: v.cpu() for k, v in self.node_embeddings.items()}
+        }
+    
+    def load_state_dict(self, state_dict):
+        """Load the state dictionary of the model."""
+        self.encoder.load_state_dict(state_dict['encoder'])
+        self.node_embeddings = {k: v.to(self.encoder.conv1.weight.device) 
+                              for k, v in state_dict['node_embeddings'].items()} 

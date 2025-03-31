@@ -6,13 +6,15 @@ from collections import defaultdict
 from typing import Dict, List, Tuple, Optional
 
 class EllipticDataLoader:
-    def __init__(self, data_dir: str = "./elliptic_data"):
+    def __init__(self, data_dir: str = "./elliptic_data", sample_size: Optional[float] = None):
         """Initialize the data loader for the Elliptic Bitcoin dataset.
         
         Args:
             data_dir: Directory containing the dataset files
+            sample_size: Fraction of data to sample (0.0 to 1.0). If None, use all data.
         """
         self.data_dir = data_dir
+        self.sample_size = sample_size
         self.feat_path = os.path.join(data_dir, "elliptic_txs_features.csv")
         self.edge_path = os.path.join(data_dir, "elliptic_txs_edgelist.csv")
         self.class_path = os.path.join(data_dir, "elliptic_txs_classes.csv")
@@ -34,10 +36,30 @@ class EllipticDataLoader:
         class_map = {"2": 0, "1": 1, "unknown": -1}
         self.class_df['class'] = self.class_df['class'].map(class_map)
         
+        # Sample the data if requested
+        if self.sample_size is not None and self.sample_size < 1.0:
+            # Sample transactions
+            sampled_txs = self.feat_df['txId'].sample(frac=self.sample_size, random_state=42)
+            
+            # Filter features
+            self.feat_df = self.feat_df[self.feat_df['txId'].isin(sampled_txs)]
+            
+            # Filter edges where both nodes are in the sample
+            self.edge_df = self.edge_df[
+                self.edge_df['txId1'].isin(sampled_txs) & 
+                self.edge_df['txId2'].isin(sampled_txs)
+            ]
+            
+            # Filter classes
+            self.class_df = self.class_df[self.class_df['txId'].isin(sampled_txs)]
+            
+            print(f"Sampled {len(sampled_txs)} transactions")
+            print(f"Sampled {len(self.edge_df)} edges")
+        
         # Merge class labels into features DataFrame
         self.feat_df = self.feat_df.merge(self.class_df, how="left", 
                                         left_on="txId", right_on="txId")
-        self.feat_df['class'].fillna(-1, inplace=True)
+        self.feat_df['class'] = self.feat_df['class'].fillna(-1)
         
         # Create node index mapping
         self.txid_to_index = {txId: idx for idx, txId in enumerate(self.feat_df['txId'])}
@@ -61,18 +83,31 @@ class EllipticDataLoader:
         # Group edges by time (assign to destination node's time)
         self.edges_by_time = defaultdict(list)
         for src, dst in zip(self.edges_indexed[0], self.edges_indexed[1]):
-            t_dst = int(self.feat_df.loc[dst, 'time_step'])
+            t_dst = int(self.feat_df.iloc[dst]['time_step'])
             self.edges_by_time[t_dst].append((src, dst))
             
         # Create graph snapshots
         self.graph_snapshots = {}
         for t in range(1, 50):  # time steps 1..49
             node_idx_list = self.nodes_by_time[t]
+            if not node_idx_list:  # Skip if no nodes in this time step
+                continue
+            
+            # Create local node index mapping for this snapshot
+            global_to_local = {global_idx: local_idx for local_idx, global_idx in enumerate(node_idx_list)}
+            local_to_global = {local_idx: global_idx for global_idx, local_idx in global_to_local.items()}
+            
+            # Convert global edge indices to local indices
             edge_index = None
             if t in self.edges_by_time:
                 edge_list = self.edges_by_time[t]
-                edge_index = list(zip(*edge_list)) if edge_list else [[], []]
-                
+                local_edges = []
+                for src, dst in edge_list:
+                    if src in global_to_local and dst in global_to_local:
+                        local_edges.append([global_to_local[src], global_to_local[dst]])
+                if local_edges:  # Only create edge_index if there are valid edges
+                    edge_index = list(zip(*local_edges))
+            
             # Extract node features and labels for this snapshot
             node_features = self.feat_df.iloc[node_idx_list, 2:-1].to_numpy()
             labels = self.feat_df.iloc[node_idx_list]['class'].to_numpy()
@@ -81,7 +116,9 @@ class EllipticDataLoader:
                 "nodes": node_idx_list,
                 "edge_index": edge_index,
                 "x": node_features,
-                "y": labels
+                "y": labels,
+                "global_to_local": global_to_local,
+                "local_to_global": local_to_global
             }
             
     def get_snapshot(self, t: int) -> Data:
@@ -99,9 +136,20 @@ class EllipticDataLoader:
         snapshot = self.graph_snapshots[t]
         x = torch.tensor(snapshot['x'], dtype=torch.float)
         y = torch.tensor(snapshot['y'], dtype=torch.long)
-        edge_index = torch.tensor(snapshot['edge_index'], dtype=torch.long)
         
-        return Data(x=x, edge_index=edge_index, y=y)
+        # Create edge_index tensor if edges exist
+        if snapshot['edge_index'] is not None:
+            edge_index = torch.tensor(snapshot['edge_index'], dtype=torch.long)
+        else:
+            edge_index = torch.empty((2, 0), dtype=torch.long)
+        
+        # Create Data object with all necessary attributes
+        data = Data(x=x, edge_index=edge_index, y=y)
+        data.nodes = torch.tensor(snapshot['nodes'], dtype=torch.long)
+        data.global_to_local = snapshot['global_to_local']
+        data.local_to_global = snapshot['local_to_global']
+        
+        return data
     
     def get_train_test_split(self, train_end: int = 34) -> Tuple[List[Data], List[Data]]:
         """Get training and test splits of the dataset.
@@ -124,7 +172,7 @@ class EllipticDataLoader:
                 
         return train_data, test_data
     
-    def get_node_features_dim(self) -> int:
+    def get_node_feature_dim(self) -> int:
         """Get the dimension of node features."""
         return self.feat_df.shape[1] - 3  # excluding txId, time_step, class
     
