@@ -39,10 +39,12 @@ The Elliptic dataset is a graph of Bitcoin transactions over time, containing:
 pip install -r requirements.txt
 ```
 
-3. Download the Elliptic dataset and place the following files in the `elliptic_data` directory:
-- `elliptic_txs_features.csv`
+3. **Download the Elliptic dataset** from [Kaggle](https://www.kaggle.com/ellipticco/elliptic-data-set) and place the following files in the `elliptic_data` directory:
+- `elliptic_txs_features.csv` (657 MB - requires Kaggle account)
 - `elliptic_txs_edgelist.csv`
 - `elliptic_txs_classes.csv`
+
+**Note**: The dataset files are not included in this repository due to size limitations. You must download them separately from Kaggle.
 
 ## Project Structure
 

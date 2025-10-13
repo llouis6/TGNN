@@ -58,8 +58,8 @@ Thumbs.db
 *.log
 logs/
 
-# Data (optional - uncomment if you don't want to track data files)
-# elliptic_data/
+# Data (excluded due to size limits)
+elliptic_data/
 
 # Results and outputs
 results/
