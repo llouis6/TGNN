@@ -19,29 +19,57 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
-# Virtual Environment
-venv/
-env/
-ENV/
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# Project specific
-elliptic_data/
+# PyTorch
 *.pth
 *.pt
-*.ckpt
+!best_model_with_optimal_threshold.pt
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Environment variables
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
 *.log
-*.csv
+logs/
+
+# Data (optional - uncomment if you don't want to track data files)
+# elliptic_data/
+
+# Results and outputs
+results/
 *.png
 *.jpg
 *.jpeg
+!final_model_*.png
+!temporal_*.png
 
-# OS specific
-.DS_Store
-Thumbs.db 
+# Temporary files
+*.tmp
+*.temp
+*.bak

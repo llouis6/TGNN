@@ -1,0 +1,15 @@
+{
+    "sample_size": 0.7471872560898022,
+    "hidden_feats": 160,
+    "use_gat": false,
+    "num_gnn_layers": 2,
+    "dropout": 0.3518866457917366,
+    "lr": 0.0003870925090174063,
+    "weight_decay": 0.0007553235940612696,
+    "lambda_link": 1.4462549939974656,
+    "alpha_anomaly": 0.4214796374130208,
+    "activity_regularization": 0.002502248998124198,
+    "temporal_consistency_weight": 0.08210906636404035,
+    "feature_dropout": 0.11083551328067244,
+    "edge_dropout": 0.07862828998142879
+}
