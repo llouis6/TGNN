@@ -9,6 +9,9 @@ Our approach addresses three key challenges in temporal network anomaly detectio
 - **Structural Evolution**: Capturing unusual patterns in how network structure changes over time
 - **Imperfect Datasets**: Handling heavily imbalanced data with scarce labeling
 
+## Report
+[ Louis_Cashion_Paper (PDF)](Report.pdf)
+
 ## Dataset
 
 The Elliptic dataset is a graph of Bitcoin transactions over time, containing:
