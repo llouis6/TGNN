@@ -52,12 +52,18 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-3. **Download the Elliptic dataset** from [Kaggle](https://www.kaggle.com/ellipticco/elliptic-data-set) and place the following files in the `elliptic_data` directory:
-- `elliptic_txs_features.csv` (657 MB - requires Kaggle account)
-- `elliptic_txs_edgelist.csv`
-- `elliptic_txs_classes.csv`
+3. **Create the data directory and download the Elliptic dataset**:
 
-**Note**: The dataset files are not included in this repository due to size limitations. You must download them separately from Kaggle.
+```bash
+mkdir elliptic_data
+```
+
+Download the dataset from [Kaggle](https://www.kaggle.com/ellipticco/elliptic-data-set) (requires Kaggle account) and place the following files in the `elliptic_data/` directory:
+- `elliptic_txs_features.csv` (658 MB)
+- `elliptic_txs_edgelist.csv` (4.3 MB)
+- `elliptic_txs_classes.csv` (3.2 MB)
+
+**Important**: The `elliptic_data/` folder is excluded from version control (`.gitignore`) because the dataset exceeds GitHub's file size limits. All users must download the data separately from Kaggle.
 
 ## Project Structure
 
