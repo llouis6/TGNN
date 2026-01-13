@@ -9,6 +9,13 @@ Our approach addresses three key challenges in temporal network anomaly detectio
 - **Structural Evolution**: Capturing unusual patterns in how network structure changes over time
 - **Imperfect Datasets**: Handling heavily imbalanced data with scarce labeling
 
+## Requirements
+
+- Python **3.10 or 3.11** (recommended: **3.11**)
+- macOS / Linux (Apple Silicon supported)
+
+> Note: Python ≥3.12 is not currently supported due to dependency constraints (e.g. DGL).
+
 ## Report
 [ Louis_Cashion_Paper (PDF)](Report.pdf)
 
@@ -37,8 +44,11 @@ The Elliptic dataset is a graph of Bitcoin transactions over time, containing:
 ## Installation
 
 1. Clone this repository
-2. Install dependencies:
+2. Create virtual environment and install dependencies:
+
 ```bash
+python3.11 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
